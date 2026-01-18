@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>Nakul-Draw a Perfect Circle</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+
+
+<style>
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+body{
+
+    background:#0a0a0a;
+
+    color:#fff;
+
+    min-height:100vh;
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    justify-content:center;
+
+    font-family:Segoe UI, sans-serif;
+
+}
+
+h1{
+
+    font-size:clamp(24px,4vw,32px);
+
+    letter-spacing:3px;
+
+    margin-bottom:10px;
+
+}
+
+.wrapper{width:min(90vw,360px)}
+
+canvas{
+
+    width:100%;
+
+    background:#111;
+
+    border-radius:20px;
+
+    touch-action:none;
+
+    display:block;
+
+}
+
+#score{
+
+    margin-top:18px;
+
+    font-size:clamp(30px,6vw,42px);
+
+    font-weight:bold;
+
+    text-align:center;
+
+
+
+    /* FIX: no horizontal movement */
+
+    width:140px;
+
+    font-family:monospace;
+
+    margin-left:auto;
+
+    margin-right:auto;
+
+}
+
+
+
+/* FIX 1: message space (Draw a full circle) */
+
+#msg{
+
+    height:28px;
+
+    font-size:clamp(16px,4vw,20px);
+
+    margin-top:6px;
+
+    text-align:center;
+
+}
+
+
+
+/* FIX 2: best score space (NO button jump) */
+
+#best{
+
+    height:26px; /* space always reserved */
+
+    font-size:18px;
+
+    text-align:center;
+
+    margin-top:4px;
+
+}
+
+
+
+button{
+
+    margin:18px auto 0;
+
+    display:block;
+
+    padding:12px 30px;
+
+    font-size:18px;
+
+    background:transparent;
+
+    border:2px solid #fff;
+
+    color:#fff;
+
+    border-radius:50px;
+
+    cursor:pointer;
+
+    transition:.3s;
+
+}
+
+button:hover{background:#fff;color:#000}
+
+button:active{transform:scale(.9)}
+
+</style>
+
+</head>
+
+
+
+<body>
+
+
+
+<h1>NAKUL</h1>
+
+<div class="wrapper"><canvas id="c"></canvas></div>
+
+
+
+<div id="score">XY.Z%</div>
+
+<div id="msg">Draw a full circle</div>
+
+<div id="best"></div>
+
+<button onclick="resetGame()">Retry</button>
+
+
+
+<script>
+
+const canvas = document.getElementById("c");
+
+const ctx = canvas.getContext("2d");
+
+
+
+let drawing=false, pts=[], bestScore=0, size=300;
+
+
+
+function resize(){
+
+  const css=canvas.getBoundingClientRect().width;
+
+  const dpr=devicePixelRatio||1;
+
+  canvas.width=css*dpr;
+
+  canvas.height=css*dpr;
+
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  size=css;
+
+}
+
+resize(); addEventListener("resize",resize);
+
+
+
+function pos(e){
+
+  const r=canvas.getBoundingClientRect();
+
+  return {
+
+    x:(e.touches?e.touches[0].clientX:e.clientX)-r.left,
+
+    y:(e.touches?e.touches[0].clientY:e.clientY)-r.top
+
+  };
+
+}
+
+
+
+function colorFor(s){
+
+  if(s<10) return "#6b0000";
+
+  if(s<20) return "#b00000";
+
+  if(s<30) return "#ff4500";
+
+  if(s<40) return "#ff7b00";
+
+  if(s<50) return "#ffae00";
+
+  if(s<60) return "#ffe600";
+
+  if(s<70) return "#b4ff00";
+
+  if(s<80) return "#66ff00";
+
+  if(s<90) return "#00ff66";
+
+  return "#00ffcc";
+
+}
+
+
+
+function start(e){
+
+  drawing=true;
+
+  pts=[];
+
+  ctx.clearRect(0,0,size,size);
+
+  pts.push(pos(e));
+
+}
+
+
+
+function move(e){
+
+  if(!drawing) return;
+
+  pts.push(pos(e));
+
+
+
+  ctx.strokeStyle="#00ff66";
+
+  ctx.lineWidth=4;
+
+  ctx.lineCap="round";
+
+  ctx.beginPath();
+
+  pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+
+  ctx.stroke();
+
+
+
+  if(pts.length>10){
+
+    const s=calcScore(false);
+
+    score.textContent=s+"%";
+
+    score.style.color=colorFor(s);
+
+    msg.textContent="";
+
+  }
+
+}
+
+
+
+function end(){
+
+  drawing=false;
+
+  finalCheck();
+
+}
+
+
+
+function calcScore(limit){
+
+  let cx=0,cy=0;
+
+  pts.forEach(p=>{cx+=p.x;cy+=p.y});
+
+  cx/=pts.length; cy/=pts.length;
+
+
+
+  let rs=pts.map(p=>Math.hypot(p.x-cx,p.y-cy));
+
+  let avg=rs.reduce((a,b)=>a+b)/rs.length;
+
+  let err=rs.reduce((a,r)=>a+Math.abs(r-avg),0)/rs.length;
+
+
+
+  let s=Math.max(0,100-err*2);
+
+  return limit?Math.min(100,s).toFixed(1):s.toFixed(1);
+
+}
+
+
+
+function finalCheck(){
+
+  if(pts.length<20 || Math.hypot(pts[0].x-pts.at(-1).x,pts[0].y-pts.at(-1).y)>size*0.08){
+
+    score.textContent="XY.Z%";
+
+    score.style.color="#b00000";
+
+    msg.textContent="Draw a full circle";
+
+    best.textContent="";
+
+    return;
+
+  }
+
+
+
+  const s=calcScore(true);
+
+  score.textContent=s+"%";
+
+  score.style.color=colorFor(s);
+
+
+
+  if(s>bestScore){
+
+    bestScore=s;
+
+    best.textContent="New best score";
+
+  }else{
+
+    best.textContent="Best: "+bestScore+"%";
+
+  }
+
+}
+
+
+
+function resetGame(){
+
+  ctx.clearRect(0,0,size,size);
+
+  pts=[];
+
+  score.textContent="XY.Z%";
+
+  score.style.color="#b00000";
+
+  msg.textContent="Draw a full circle";
+
+  best.textContent="";
+
+}
+
+
+
+canvas.addEventListener("mousedown",start);
+
+canvas.addEventListener("mousemove",move);
+
+canvas.addEventListener("mouseup",end);
+
+canvas.addEventListener("touchstart",start,{passive:false});
+
+canvas.addEventListener("touchmove",move,{passive:false});
+
+canvas.addEventListener("touchend",end);
+
+</script>
+
+
+
+</body>
+
+</html>
+
